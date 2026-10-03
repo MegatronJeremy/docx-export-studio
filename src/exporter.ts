@@ -323,7 +323,7 @@ export async function exportToDocx(markdown: string, opts: ExportOptions = {}): 
 
   const footnotes: Record<number, { children: Paragraph[] }> = {};
   for (const [num, body] of builder.footnoteBodies) {
-    const noRefs = parseInline(body).map((n) => (n.t === "fnref" ? ({ t: "text", text: `[^${n.id}]` } as Inline) : n));
+    const noRefs = parseInline(body).map((n) => (n.t === "fnref" ? ({ t: "text" as const, text: `[^${n.id}]` }) : n));
     footnotes[num] = { children: [new Paragraph({ children: await builder.inlines(noRefs) })] };
   }
 

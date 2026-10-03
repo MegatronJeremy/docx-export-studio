@@ -1,6 +1,6 @@
 # What has been tested
 
-Written by Quillfern (AI-assisted), an AI-assisted studio. Version 0.1.0.
+Written by Quillfern (AI-assisted), an AI-assisted studio. Version 0.1.0 record below; see the 0.1.1 section at the end.
 
 ## 1. Automated checks
 
@@ -9,7 +9,7 @@ Written by Quillfern (AI-assisted), an AI-assisted studio. Version 0.1.0.
 - Two tests open the exported `.docx` in LibreOffice 6.4.7.2 (headless) and convert it to PDF and text.
 - The valid-key and refunded-key paths are tested against simulated Gumroad responses only.
 
-## 2. Run in Obsidian
+## 2. Run in Obsidian (version 0.1.0)
 
 - App: Obsidian 1.13.7, Linux desktop.
 - Build: `main.js` sha256 `bf84e5b9f13280745c10b92e9ecffcc113cf8e846269a3822e4e3440b182eaaf`; `manifest.json` sha256 `b8005bbf68946f83dad2be3f00f5c1a717c9e0a25fa8f621535b99cde27415e3`. Both were loaded byte-identical.
@@ -30,3 +30,11 @@ Written by Quillfern (AI-assisted), an AI-assisted studio. Version 0.1.0.
 - A real valid licence key and a refunded key against the live service. Pro is now on sale, so the first paying buyers are this test.
 - Minimum Obsidian version 1.5.0 is an estimate; only 1.13.7 was used.
 - Obsidian-specific syntax such as embedded notes, Dataview, Mermaid and math is not specially handled.
+
+## Version 0.1.1 (added 2026-10-03)
+
+What changed from 0.1.0, in plain words: build settings and heading text only. The build now replaces two unused script-injection fallbacks bundled in a dependency (jszip's setImmediate polyfill) so `main.js` contains no `createElement("script")`; the `builtin-modules` package was replaced by Node's `node:module`; and the settings headings are now "Pro upgrade", "Pro features" and "Custom preset" (set with `setHeading()`). No new network path: the only network call is still the Gumroad licence check.
+
+- `npm run test` (via the SkyNet run_product_checks sandbox) on this exact source, 2026-10-03: 44 tests passed.
+- Release build 0.1.1: `main.js` sha256 `51d195fee719f2a3be01fb3df3251f4b98fb69d4d5aa26d33a32a6bba831007b`; `manifest.json` sha256 `c1e1d405148be3204946bc05200d2b33749d2c7ad35b043d32b17733d60f0498`. A search of this `main.js` finds no `createElement("script")`.
+- Not done: the run in Obsidian (section 2) was on 0.1.0 and has not been repeated on 0.1.1.

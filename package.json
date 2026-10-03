@@ -1,6 +1,6 @@
 {
   "name": "docx-export-studio",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "description": "Export notes to .docx files without Pandoc. No telemetry.",
   "main": "main.js",
   "scripts": {
@@ -12,7 +12,6 @@
   "license": "MIT",
   "devDependencies": {
     "@types/node": "^22.0.0",
-    "builtin-modules": "^4.0.0",
     "esbuild": "^0.24.0",
     "jszip": "^3.10.1",
     "obsidian": "^1.7.2",

@@ -54,7 +54,7 @@ Keys from refunded or charged-back purchases, or from ended/cancelled subscripti
 
 ## Known limits (honest status)
 
-- **Tested in Obsidian 1.13.7 on Linux desktop**, with the exact release build (`main.js` sha256 starts `bf84e5b9`, `manifest.json` starts `b8005bbf`). 44 automated tests also check the generated `.docx` XML. See TESTED.md.
+- **Tested in Obsidian 1.13.7 on Linux desktop on version 0.1.0** (`main.js` sha256 starts `bf84e5b9`). Version 0.1.1 only changes build settings and settings-heading text for the Obsidian directory review; its 44 automated tests pass, but the run in Obsidian was not repeated on 0.1.1. See TESTED.md.
 - **Pro features were exercised with the Pro state forced on in the test setup, not with a licence key.**
 - **Not tested in Microsoft Word.** Output was checked in LibreOffice 6.4.7.2 (headless) and by inspecting the `.docx` XML. The converted PDFs were not viewed by eye.
 - **Batch export with subfolders was not exercised.**

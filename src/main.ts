@@ -43,7 +43,7 @@ const MAX_BATCH = 200;
 /** Adapt Obsidian's requestUrl (works on desktop and mobile, no CORS) to the fetch-like shape license.ts expects. */
 const obsidianPost: HttpPost = async (url, init) => {
   const r = await requestUrl({ url, method: init.method, headers: init.headers, body: init.body, throw: false });
-  return { status: r.status, json: async () => r.json };
+  return { status: r.status, json: async () => r.json as unknown };
 };
 
 /**
@@ -59,7 +59,8 @@ export default class DocxExportStudio extends Plugin {
   }
 
   async onload() {
-    this.settings = { ...DEFAULTS, ...(await this.loadData()) };
+    const saved = (await this.loadData()) as Partial<Settings> | null;
+    this.settings = { ...DEFAULTS, ...saved };
     this.addSettingTab(new ExportSettingTab(this.app, this));
 
     this.addCommand({
@@ -181,7 +182,7 @@ class ExportSettingTab extends PluginSettingTab {
     const s = this.plugin.settings;
     el.empty();
 
-    new Setting(el).setName("DOCX Export Studio Pro").setHeading();
+    new Setting(el).setName("Pro upgrade").setHeading();
     el.createEl("p", {
       text:
         "Optional paid upgrade (one-time purchase on Gumroad). Pro unlocks: " +
@@ -196,7 +197,7 @@ class ExportSettingTab extends PluginSettingTab {
       .setName("Licence key")
       .addText((t) => t.setPlaceholder("Paste your key").setValue(key).onChange((v) => (key = v)))
       .addButton((b) =>
-        b.setButtonText(s.proActive ? "Re-check" : "Verify").onClick(async () => {
+        b.setButtonText(s.proActive ? "Re-check" : "Verify").onClick(() => void (async () => {
           b.setDisabled(true);
           const r = await verifyLicense(key, obsidianPost);
           s.proActive = r.status === "valid";
@@ -204,13 +205,13 @@ class ExportSettingTab extends PluginSettingTab {
           await this.plugin.saveSettings();
           new Notice(r.message);
           this.display();
-        }),
+        })()),
       );
     void status;
 
     if (!s.proActive) return;
 
-    new Setting(el).setName("Pro options").setHeading();
+    new Setting(el).setName("Pro features").setHeading();
     const all = [...s.customPresets, ...BUILTIN_PRESETS];
     new Setting(el).setName("Style preset").addDropdown((d) => {
       all.forEach((p) => d.addOption(p.id, p.name));
