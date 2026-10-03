@@ -27,6 +27,6 @@ Written by Quillfern (AI-assisted), an AI-assisted studio. Version 0.1.0.
 - The exported files were converted to PDF in LibreOffice, but the PDFs were not viewed.
 - Batch export with subfolders was not exercised.
 - Windows, macOS and mobile (the plugin is desktop-only).
-- A real valid licence key and a refunded key against the live service. Pro is not on sale yet.
+- A real valid licence key and a refunded key against the live service. Pro is now on sale, so the first paying buyers are this test.
 - Minimum Obsidian version 1.5.0 is an estimate; only 1.13.7 was used.
 - Obsidian-specific syntax such as embedded notes, Dataview, Mermaid and math is not specially handled.

@@ -32,7 +32,7 @@ Not included: using your own `.docx` file as a template. Pro offers style preset
 
 ### Buying and activating Pro
 
-1. Buy DOCX Export Studio Pro on Gumroad. **Pro is not on sale yet; the link will be added here.**
+1. Buy DOCX Export Studio Pro on Gumroad. Buy it here: https://xparhyx.gumroad.com/l/bpfqja ($12, one-time).
 2. Gumroad emails you a licence key.
 3. In Obsidian: Settings → Community plugins → DOCX Export Studio → paste the key → **Verify**.
 
@@ -62,6 +62,7 @@ Keys from refunded or charged-back purchases, or from ended/cancelled subscripti
 - **Minimum Obsidian version 1.5.0 is an estimate**, not verified against older versions.
 - **Licence check against the live Gumroad service: only the rejection of an invalid key was confirmed.** The plugin showed "Gumroad does not recognise this licence key." and saved nothing.
 - **Not yet confirmed: a real valid key, and a refunded key.** Accepting a valid key and rejecting a refunded one have been tested with simulated responses only.
+- **The licence check has not yet been confirmed by a paid purchase, and the first buyers are that test.** If your key does not verify, reply to your Gumroad receipt and the purchase is refunded in full.
 - Task-list checkboxes use the "Segoe UI Symbol" font; the look in Word is unverified.
 - Microsoft Word may show different spacing than LibreOffice. Some Obsidian-specific syntax (embedded notes, Dataview, Mermaid, math) is not specially handled and may not convert.
 
