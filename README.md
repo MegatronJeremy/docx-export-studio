@@ -49,7 +49,7 @@ Keys from refunded or charged-back purchases, or from ended/cancelled subscripti
 
 ## Install
 
-- **From the community directory** (once accepted): Settings → Community plugins → Browse → search "DOCX Export Studio" → Install → Enable. *(Not listed yet: this line will be true only after the directory accepts it.)*
+- **From the community directory:** Settings → Community plugins → Browse → search "DOCX Export Studio" → Install → Enable.
 - **Manually**: download `main.js` and `manifest.json` from the latest GitHub release into `<your vault>/.obsidian/plugins/docx-export-studio/`, then enable the plugin under Community plugins.
 
 ## Known limits (honest status)
