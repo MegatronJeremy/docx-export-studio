@@ -19,6 +19,35 @@ Supported Markdown:
 - Code blocks, block quotes, callouts
 - Local images (`![[image.png]]` and `![](image.png)`) embedded from your vault
 
+## FAQ
+
+### How do I get an Obsidian note into Word without losing the formatting?
+Run **Export current note to .docx** from the command palette (or click the ribbon icon). Headings, bold/italic/strikethrough/highlight, links, lists, task lists, tables, code blocks, quotes, callouts and local images become real Word elements, not pasted text. Final layout tweaks are still easiest in Word.
+
+### Do I need Pandoc?
+No. The plugin builds the .docx itself: no Pandoc, no command line, no PATH setup, and no extra download.
+
+### Are images embedded in the .docx?
+Yes for local images in your vault, both `![[image.png]]` and `![](image.png)`. Images are looked up through Obsidian's own link resolution rather than a file path passed to an external tool. Limit: we have not tested every vault layout (for example deeply nested attachment folders), so please open an issue if one fails. Web images are not embedded.
+
+### Does it work on mobile?
+No. It is desktop-only. It has also only been tested on Linux desktop so far (see Known limits).
+
+### Can I use my own Word template or custom styles?
+No. Using your own .docx as a template is not supported, in the free version or in Pro. The free version uses the plugin's default look; Pro adds style presets (fonts, spacing, margins, page size), not .docx templates.
+
+### Where is the file saved, and can I choose the folder?
+Next to the note, inside your vault. You can't pick another folder. An existing file is never overwritten: you get `Note (1).docx`, `Note (2).docx`, and so on.
+
+### What about math and embedded notes?
+In the current release (0.1.2), embedded notes, math, Dataview and Mermaid are not specially handled and may not convert (see Known limits).
+
+### Does it send my notes anywhere?
+No. Exporting works fully offline: no network call during export, no telemetry, analytics or ads, and your notes never leave your computer.
+
+### Is the output tested in Microsoft Word?
+Not yet. It was checked in LibreOffice (headless) and by inspecting the .docx XML. Word may show different spacing.
+
 ## Pro version (optional, paid)
 
 Pro unlocks these features, built and covered by automated tests (see "Known limits" for what has not been tested):
