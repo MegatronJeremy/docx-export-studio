@@ -9,6 +9,7 @@ export interface InlineStyle {
 export type Inline =
   | ({ t: "text"; text: string } & InlineStyle)
   | { t: "break" }
+  | { t: "math"; tex: string }
   | { t: "fnref"; id: string }
   | { t: "link"; href: string; children: Inline[] }
   | { t: "image"; src: string; alt: string; width?: number };
@@ -28,4 +29,5 @@ export type Block =
   | { t: "table"; header: Inline[][]; align: ("left" | "center" | "right")[]; rows: Inline[][][] }
   | { t: "callout"; kind: string; title: Inline[]; children: Block[] }
   | { t: "quote"; children: Block[] }
+  | { t: "math"; tex: string }
   | { t: "hr" };

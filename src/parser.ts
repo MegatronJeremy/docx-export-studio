@@ -6,7 +6,21 @@ export function parseMarkdown(source: string): Block[] {
   let text = source.replace(/\r\n?/g, "\n").replace(/\t/g, "    ");
   text = text.replace(/^---\n[\s\S]*?\n---[ \t]*(\n|$)/, ""); // frontmatter
   text = text.replace(/%%[\s\S]*?%%/g, ""); // Obsidian comments
-  return parseBlocks(text.split("\n"));
+  text = text.replace(/<!--[\s\S]*?-->/g, ""); // HTML comments (hidden in Obsidian reading view)
+  return parseBlocks(stripBlockIds(text.split("\n")));
+}
+
+/** Obsidian hides `^id` block anchors in reading view; drop them (not in code fences, math or lines with `$`). */
+function stripBlockIds(lines: string[]): string[] {
+  let fence = false;
+  let math = false;
+  return lines.map((l) => {
+    if (/^ {0,3}(`{3,}|~{3,})/.test(l)) fence = !fence;
+    else if (!fence && /^ {0,3}\$\$\s*$/.test(l)) math = !math;
+    if (fence || math || l.includes("$")) return l;
+    if (/^(?: {0,3}>\s?)*\^[A-Za-z0-9-]+\s*$/.test(l)) return l.replace(/\^[A-Za-z0-9-]+\s*$/, "");
+    return l.replace(/(\S) \^[A-Za-z0-9-]+\s*$/, "$1");
+  });
 }
 
 const FENCE = /^ {0,3}(`{3,}|~{3,})\s*([^\s`]*)/;
@@ -62,10 +76,36 @@ export function parseBlocks(lines: string[]): Block[] {
       continue;
     }
 
+    if (/^ {0,3}\$\$/.test(line)) {
+      const one = line.trim().match(/^\$\$([\s\S]+?)\$\$$/);
+      if (one) {
+        blocks.push({ t: "math", tex: one[1] });
+        i++;
+        continue;
+      }
+      let j = i;
+      const body: string[] = [line.trim().slice(2)];
+      while (++j < lines.length && !lines[j].includes("$$")) body.push(lines[j]);
+      if (j < lines.length) {
+        body.push(lines[j].slice(0, lines[j].indexOf("$$")));
+        if (lines[j].slice(lines[j].indexOf("$$") + 2).trim() === "") {
+          blocks.push({ t: "math", tex: body.join("\n") });
+          i = j + 1;
+          continue;
+        }
+      }
+    }
+
     const h = line.match(HEADING);
     if (h) {
       blocks.push({ t: "heading", level: h[1].length as 1 | 2 | 3 | 4 | 5 | 6, content: parseInline(h[2]) });
       i++;
+      continue;
+    }
+
+    if (i + 1 < lines.length && /^ {0,3}(=+|-+)\s*$/.test(lines[i + 1]) && !startsBlock(lines, i) && !/^ {0,3}(-|=)/.test(line)) {
+      blocks.push({ t: "heading", level: lines[i + 1].trim().startsWith("=") ? 1 : 2, content: parseInline(line.trim()) });
+      i += 2;
       continue;
     }
 
@@ -120,9 +160,9 @@ export function parseBlocks(lines: string[]): Block[] {
           if (!stack.length || indent > stack[stack.length - 1]) stack.push(indent);
           let content = m[3];
           let checked: boolean | undefined;
-          const task = content.match(/^\[([ xX])\]\s+(.*)$/);
+          const task = content.match(/^\[([ xX\/\-])\]\s+(.*)$/);
           if (task) {
-            checked = task[1] !== " ";
+            checked = task[1] === "x" || task[1] === "X";
             content = task[2];
           }
           items.push({ level: Math.min(stack.length - 1, 8), ordered: /\d/.test(m[2]), checked, content: parseInline(content) });
@@ -199,7 +239,7 @@ export function parseInline(src: string, style: InlineStyle = {}): Inline[] {
     const prev = i > 0 ? src[i - 1] : " ";
     let m: RegExpMatchArray | null;
 
-    if (rest[0] === "\\" && rest.length > 1 && /[\\`*_{}[\]()#+\-.!|~=>]/.test(rest[1])) {
+    if (rest[0] === "\\" && rest.length > 1 && /[\\`*_{}[\]()#+\-.!|~=>$]/.test(rest[1])) {
       buf += rest[1];
       i += 2;
       continue;
@@ -225,6 +265,9 @@ export function parseInline(src: string, style: InlineStyle = {}): Inline[] {
       out.push({ t: "link", href: url, children: [{ t: "text", text: url, ...style }] });
       i += url.length;
       continue;
+    } else if ((m = rest.match(/^\$\$([^$]+?)\$\$/) ?? rest.match(/^\$(?=[^\s$])((?:[^$\\]|\\.)+?)(?<=\S)\$(?![0-9])/))) {
+      flush();
+      out.push({ t: "math", tex: m[1] });
     } else if ((m = rest.match(/^`([^`]+)`/))) {
       flush();
       out.push({ t: "text", text: m[1], ...style, code: true });
@@ -269,6 +312,7 @@ export function extractFootnotes(source: string): { text: string; defs: Map<stri
   const out: string[] = [];
   const lines = source.replace(/\r\n?/g, "\n").split("\n");
   let fence: string | null = null;
+  let inlineN = 0;
   for (let i = 0; i < lines.length; i++) {
     const l = lines[i];
     const f = l.match(FENCE);
@@ -284,7 +328,21 @@ export function extractFootnotes(source: string): { text: string; defs: Map<stri
     }
     const d = l.match(/^\[\^([^\]\s]+)\]:\s*(.*)$/);
     if (!d) {
-      out.push(l);
+      // Inline footnotes ^[text] become ordinary definitions; text inside `code` spans is left alone.
+      out.push(
+        l
+          .split(/(`[^`]*`)/)
+          .map((seg, k) =>
+            k % 2
+              ? seg
+              : seg.replace(/\^\[([^\]\n]+)\]/g, (_m, body: string) => {
+                  const id = `inline-${++inlineN}`;
+                  defs.set(id, body.trim());
+                  return `[^${id}]`;
+                }),
+          )
+          .join(""),
+      );
       continue;
     }
     let body = d[2];

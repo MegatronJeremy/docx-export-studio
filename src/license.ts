@@ -65,3 +65,20 @@ export async function verifyLicense(
   if (p.subscription_ended_at || p.subscription_cancelled_at || p.subscription_failed_at) return { status: "refunded", message: "This licence is no longer active." };
   return { status: "valid", message: "Pro unlocked. Thank you!" };
 }
+
+/**
+ * What the settings should hold after a Verify/Re-check. A network or server error (status "error")
+ * changes nothing, so a paying user who is offline keeps Pro; only a definite answer from Gumroad
+ * (valid / invalid / refunded) switches it.
+ */
+export function applyLicenseResult(
+  cur: { proActive: boolean; licenseKey: string },
+  r: LicenseResult,
+  rawKey: string,
+): { proActive: boolean; licenseKey: string } {
+  if (r.status === "error" || r.status === "unconfigured") return { proActive: cur.proActive, licenseKey: cur.licenseKey };
+  return {
+    proActive: r.status === "valid",
+    licenseKey: r.status === "valid" || r.status === "refunded" ? rawKey.trim() : cur.licenseKey,
+  };
+}

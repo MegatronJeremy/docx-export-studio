@@ -26,6 +26,23 @@ describe("footnote parsing", () => {
   });
 });
 
+describe("inline footnotes", () => {
+  const src = "Para.[^1] Two.[^2] Three.[^3] Inline.^[Inline *body* here.] Code `^[no]` stays.\n\n[^1]: One\n[^2]: Two\n[^3]: Three\n\n```\n^[fenced]\n```\n";
+  it("writes 4 native footnotes with matching ids", async () => {
+    const zip = await JSZip.loadAsync(await exportToDocx(src, { gate: new UnlockedGate(), pro }));
+    const doc = await zip.file("word/document.xml")!.async("string");
+    const fn = await zip.file("word/footnotes.xml")!.async("string");
+    const refs = [...doc.matchAll(/<w:footnoteReference w:id="(\d+)"/g)].map((m) => m[1]);
+    const ids = [...fn.matchAll(/<w:footnote (?:[^>]*? )?w:id="(\d+)"/g)].map((m) => m[1]).filter((x) => Number(x) > 0);
+    expect(refs).toHaveLength(4);
+    expect(ids.sort()).toEqual([...refs].sort());
+    expect(fn).toContain("Inline");
+    expect(fn).toContain("body");
+    expect(doc).toContain("^[no]");
+    expect(doc).toContain("^[fenced]");
+  });
+});
+
 describe("free build ignores Pro options", () => {
   it("keeps literal [^a] text, no footnotes, header, footer or preset", async () => {
     const p = await parts({ gate: new FreeGate(), pro });

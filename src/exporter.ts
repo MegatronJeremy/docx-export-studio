@@ -7,7 +7,9 @@ import {
   FootnoteReferenceRun,
   Header,
   HeadingLevel,
+  TableOfContents,
   ImageRun,
+  ImportedXmlComponent,
   LevelFormat,
   PageNumber,
   Packer,
@@ -15,11 +17,14 @@ import {
   ShadingType,
   Table,
   TableCell,
+  TableLayoutType,
   TableRow,
   TextRun,
   WidthType,
 } from "docx";
 import type { Block, Inline, ListItem } from "./ast";
+import { expandEmbeds, type NoteLoader } from "./embeds";
+import { latexToOmml } from "./math";
 import { imageInfo } from "./imagesize";
 import { extractFootnotes, parseInline, parseMarkdown } from "./parser";
 import { FreeGate, type ProGate, type ProOptions, type StylePreset } from "./pro";
@@ -29,13 +34,25 @@ export interface ExportOptions {
   title?: string;
   /** Return the bytes of an embedded image, or null if it cannot be found. Never fetches over the network. */
   resolveImage?: (src: string) => Promise<Uint8Array | null>;
+  /** Load another note for `![[note]]` embeds. Without it, embeds are left unexpanded. */
+  resolveNote?: NoteLoader;
+  /** Vault path of the exported note (cycle guard and relative link base). */
+  sourcePath?: string;
   /** Pro gate. Defaults to FreeGate, which unlocks nothing. */
   gate?: ProGate;
   pro?: ProOptions;
+  /** Free-tier page setup. A Pro preset, when active, overrides it. Default A4, normal margins. */
+  page?: { size?: "A4" | "Letter"; margins?: "normal" | "narrow" };
+  /** Insert a Word table-of-contents field (headings 1-4) at the top. A `[[toc]]` or `%% toc %%` line in the note also turns it on. */
+  toc?: boolean;
 }
 
 type Child = Paragraph | Table;
-type Run = TextRun | ExternalHyperlink | ImageRun | FootnoteReferenceRun;
+const MAX_NUMBERED_LISTS = 250;
+/** Beyond this the docx library needs >2 GB and minutes (perf.md): refuse with a clear message instead of freezing Obsidian. */
+export const MAX_SOURCE_CHARS = 2_500_000;
+const NUMBERING_BUDGET = 5e7; // ordered lists x source characters
+type Run = TextRun | ExternalHyperlink | ImageRun | FootnoteReferenceRun | ImportedXmlComponent;
 
 interface Wrap {
   left: number; // extra left indent, twips
@@ -81,11 +98,14 @@ const HEADINGS = [
 ];
 
 class Builder {
-  orderedRefs: string[] = [];
+  orderedCount = 0;
+  maxNumbered = MAX_NUMBERED_LISTS;
   /** Footnote id -> definition text; empty when Pro footnotes are off. */
   footnoteDefs = new Map<string, string>();
   /** Footnote number -> source text, in creation order. */
   footnoteBodies = new Map<number, string>();
+  /** Text width in twips (page minus margins); tables are sized to it. */
+  textWidth = 9026;
   constructor(private opts: ExportOptions) {}
 
   async inlines(list: Inline[], extra: { bold?: boolean } = {}): Promise<Run[]> {
@@ -99,8 +119,7 @@ class Builder {
             italics: n.italic || undefined,
             strike: n.strike || undefined,
             highlight: n.highlight ? "yellow" : undefined,
-            font: n.code ? CODE_FONT : undefined,
-            shading: n.code ? { type: ShadingType.CLEAR, fill: "EFEFEF", color: "auto" } : undefined,
+            style: n.code ? "InlineCode" : undefined,
           }),
         );
       } else if (n.t === "fnref") {
@@ -112,6 +131,8 @@ class Builder {
           this.footnoteBodies.set(num, body);
           runs.push(new FootnoteReferenceRun(num));
         }
+      } else if (n.t === "math") {
+        runs.push(this.math(n.tex, false));
       } else if (n.t === "break") {
         runs.push(new TextRun({ break: 1 }));
       } else if (n.t === "link") {
@@ -131,6 +152,18 @@ class Builder {
       }
     }
     return runs;
+  }
+
+  /** Native Word equation; falls back to the raw LaTeX in monospace if it cannot be converted. */
+  private math(tex: string, display: boolean): Run {
+    try {
+      const xml = latexToOmml(tex);
+      const ns = 'xmlns:m="http://schemas.openxmlformats.org/officeDocument/2006/math"';
+      const wrapped = display ? xml.replace("<m:oMath>", "<m:oMathPara><m:oMath>").replace(/<\/m:oMath>$/, "</m:oMath></m:oMathPara>") : xml;
+      return ImportedXmlComponent.fromXmlString(wrapped.replace(/^<m:(\w+)/, `<m:$1 ${ns}`));
+    } catch {
+      return new TextRun({ text: display ? tex.trim() : `$${tex}$`, font: CODE_FONT, shading: { type: ShadingType.CLEAR, fill: "EFEFEF", color: "auto" } });
+    }
   }
 
   private async image(n: Extract<Inline, { t: "image" }>): Promise<Run> {
@@ -177,6 +210,8 @@ class Builder {
         return [new Paragraph({ heading: HEADINGS[b.level - 1], children: await this.inlines(b.content), ...this.wrapProps(wrap) })];
       case "paragraph":
         return [new Paragraph({ children: await this.inlines(b.content), spacing: { after: 120 }, ...this.wrapProps(wrap) })];
+      case "math":
+        return [new Paragraph({ children: [this.math(b.tex, true)], spacing: { after: 120 }, ...this.wrapProps(wrap) })];
       case "hr":
         return [
           new Paragraph({
@@ -189,9 +224,9 @@ class Builder {
         return lines.map(
           (l) =>
             new Paragraph({
-              children: [new TextRun({ text: l, font: CODE_FONT, size: 19 })],
-              spacing: { after: 0, line: 240 },
-              ...this.wrapProps({ left: wrap?.left ?? 0, fill: "F2F2F2", border: wrap?.border }),
+              style: "CodeBlock",
+              children: [new TextRun({ text: l })],
+              ...this.wrapProps({ left: wrap?.left ?? 0, border: wrap?.border }),
             }),
         );
       }
@@ -212,8 +247,13 @@ class Builder {
 
   private async list(items: ListItem[], wrap?: Wrap): Promise<Child[]> {
     const out: Child[] = [];
-    const ref = `ol-${this.orderedRefs.length}`;
+    // One shared abstract numbering ("ol"); each list gets its own instance so numbering restarts at 1.
+    const instance = this.orderedCount;
     let usedOrdered = false;
+    // docx's packer rewrites every numbering placeholder over the whole document (cost ~ lists x size),
+    // so past MAX_NUMBERED_LISTS ordered lists we write the numbers as literal text instead.
+    const literal = this.orderedCount >= this.maxNumbered;
+    const counters: number[] = [];
     for (const it of items) {
       const children = await this.inlines(it.content);
       if (it.checked !== undefined) {
@@ -226,22 +266,38 @@ class Builder {
         );
         continue;
       }
+      if (it.ordered && literal) {
+        counters.length = it.level + 1;
+        counters[it.level] = (counters[it.level] ?? 0) + 1;
+        usedOrdered = true;
+        out.push(
+          new Paragraph({
+            children: [new TextRun({ text: `${counters[it.level]}. ` }), ...children],
+            indent: { left: (wrap?.left ?? 0) + 360 * (it.level + 1), hanging: 260 },
+            spacing: { after: 40 },
+            ...(wrap?.fill ? this.wrapProps({ left: wrap.left ?? 0, fill: wrap.fill }) : {}),
+          }),
+        );
+        continue;
+      }
       if (it.ordered) usedOrdered = true;
       out.push(
         new Paragraph({
           children,
-          numbering: { reference: it.ordered ? ref : "bullets", level: it.level },
+          numbering: it.ordered ? { reference: "ol", level: it.level, instance } : { reference: "bullets", level: it.level },
           spacing: { after: 40 },
           ...(wrap?.fill ? this.wrapProps({ left: 0, fill: wrap.fill }) : {}),
         }),
       );
     }
-    if (usedOrdered) this.orderedRefs.push(ref);
+    if (usedOrdered) this.orderedCount++;
     return out;
   }
 
   private async table(b: Extract<Block, { t: "table" }>): Promise<Table> {
     const cols = Math.max(b.header.length, 1);
+    const colW = Math.floor(this.textWidth / cols);
+    const columnWidths = Array.from({ length: cols }, () => colW);
     const cell = async (c: Inline[], i: number, head: boolean) =>
       new TableCell({
         children: [
@@ -251,7 +307,7 @@ class Builder {
               b.align[i] === "center" ? AlignmentType.CENTER : b.align[i] === "right" ? AlignmentType.RIGHT : AlignmentType.LEFT,
           }),
         ],
-        width: { size: Math.floor(100 / cols), type: WidthType.PERCENTAGE },
+        width: { size: colW, type: WidthType.DXA },
         shading: head ? { type: ShadingType.CLEAR, fill: "E7EAF0", color: "auto" } : undefined,
         margins: { top: 40, bottom: 40, left: 100, right: 100 },
       });
@@ -262,13 +318,15 @@ class Builder {
     const line = { style: BorderStyle.SINGLE, size: 4, color: "9AA0A6" };
     return new Table({
       rows,
-      width: { size: 100, type: WidthType.PERCENTAGE },
+      width: { size: colW * cols, type: WidthType.DXA },
+      columnWidths,
+      layout: TableLayoutType.FIXED,
       borders: { top: line, bottom: line, left: line, right: line, insideHorizontal: line, insideVertical: line },
     });
   }
 }
 
-function numberingConfig(orderedRefs: string[]) {
+function numberingConfig(hasOrdered: boolean) {
   const levels = (format: (typeof LevelFormat)[keyof typeof LevelFormat], text: (l: number) => string) =>
     Array.from({ length: 9 }, (_, level) => ({
       level,
@@ -279,29 +337,48 @@ function numberingConfig(orderedRefs: string[]) {
     }));
   return [
     { reference: "bullets", levels: levels(LevelFormat.BULLET, (l) => (l % 2 === 0 ? "•" : "◦")) },
-    ...orderedRefs.map((reference) => ({
-      reference,
-      levels: levels(LevelFormat.DECIMAL, (l) => `%${l + 1}.`),
-    })),
+    ...(hasOrdered ? [{ reference: "ol", levels: levels(LevelFormat.DECIMAL, (l) => `%${l + 1}.`) }] : []),
   ];
 }
 
 const PAGE = { A4: { width: 11906, height: 16838 }, Letter: { width: 12240, height: 15840 } };
 
-function headingDefaults(p: StylePreset) {
-  const font = p.headingFont ?? p.font;
-  const mk = (pt: number, before: number) => ({
-    run: { font, size: Math.round(pt * 2), bold: true, color: p.headingColor },
-    paragraph: { spacing: { before, after: 120 } },
+function headingDefaults(p?: StylePreset) {
+  const font = p ? p.headingFont ?? p.font : "";
+  const mk = (level: number, pt: number, before: number) => ({
+    ...(p ? { run: { font, size: Math.round(pt * 2), bold: true, color: p.headingColor } } : {}),
+    paragraph: { ...(p ? { spacing: { before, after: 120 } } : {}), outlineLevel: level },
   });
+  const s = p?.sizePt ?? 11;
   return {
-    heading1: mk(p.sizePt + 9, 360),
-    heading2: mk(p.sizePt + 5, 240),
-    heading3: mk(p.sizePt + 3, 200),
-    heading4: mk(p.sizePt + 1, 160),
-    heading5: mk(p.sizePt, 160),
-    heading6: mk(p.sizePt, 160),
+    heading1: mk(0, s + 9, 360),
+    heading2: mk(1, s + 5, 240),
+    heading3: mk(2, s + 3, 200),
+    heading4: mk(3, s + 1, 160),
+    heading5: mk(4, s, 160),
+    heading6: mk(5, s, 160),
   };
+}
+
+/** `title` and `author` from a leading YAML block (plain scalars or a one-item list only); nothing else is read. */
+function frontmatterProps(md: string): { title?: string; author?: string } {
+  const m = md.replace(/^﻿/, "").match(/^---\r?\n([\s\S]*?)\r?\n---[ \t]*(\r?\n|$)/);
+  if (!m) return {};
+  const out: { title?: string; author?: string } = {};
+  const lines = m[1].split(/\r?\n/);
+  for (let i = 0; i < lines.length; i++) {
+    const kv = lines[i].match(/^(title|author):[ \t]*(.*)$/i);
+    if (!kv) continue;
+    let v = kv[2].trim();
+    if (!v) {
+      const li = (lines[i + 1] ?? "").match(/^\s*-\s+(.+)$/);
+      if (li) v = li[1].trim();
+    }
+    if (/^\[[^\[].*\]$/.test(v)) v = v.slice(1, -1).split(/\s*,\s*/)[0];
+    v = v.replace(/^(["'])(.*)\1$/, "$2").replace(/\[\[([^\]|]*\|)?([^\]]*)\]\]/g, "$2").trim();
+    if (v) out[kv[1].toLowerCase() as "title" | "author"] = v.slice(0, 200);
+  }
+  return out;
 }
 
 /** Convert Markdown (Obsidian flavour) to the bytes of a .docx file. Runs fully offline. */
@@ -313,13 +390,26 @@ export async function exportToDocx(markdown: string, opts: ExportOptions = {}): 
   const hf = gate.has("headerFooter");
 
   const builder = new Builder(opts);
+  {
+    const pg = preset ? PAGE[preset.page] : PAGE[opts.page?.size === "Letter" ? "Letter" : "A4"];
+    const m = preset ? preset.marginIn * 1440 : opts.page?.margins === "narrow" ? 720 : 1440;
+    builder.textWidth = pg.width - 2 * m;
+  }
+  builder.maxNumbered = Math.max(10, Math.min(MAX_NUMBERED_LISTS, Math.floor(NUMBERING_BUDGET / Math.max(markdown.length, 1))));
   let source = markdown;
+  if (opts.resolveNote) source = await expandEmbeds(source, opts.sourcePath ?? "", opts.resolveNote);
+  if (source.length > MAX_SOURCE_CHARS)
+    throw new Error(`Note is too large to export safely (${(source.length / 1e6).toFixed(1)} MB, limit ${MAX_SOURCE_CHARS / 1e6} MB). Split it into smaller notes.`);
   if (useFootnotes) {
-    const x = extractFootnotes(markdown);
+    const x = extractFootnotes(source);
     source = x.text;
     builder.footnoteDefs = x.defs;
   }
-  const children = await builder.blocks(parseMarkdown(source));
+  const tocRe = /^[ \t]*(?:\[\[toc\]\]|%%\s*toc\s*%%)[ \t]*$/gim;
+  const wantToc = !!opts.toc || tocRe.test(source);
+  source = source.replace(tocRe, "");
+  const children: (Paragraph | Table | TableOfContents)[] = await builder.blocks(parseMarkdown(source));
+  if (wantToc) children.unshift(new TableOfContents("Contents", { hyperlink: true, headingStyleRange: "1-4" }));
 
   const footnotes: Record<number, { children: Paragraph[] }> = {};
   for (const [num, body] of builder.footnoteBodies) {
@@ -343,19 +433,39 @@ export async function exportToDocx(markdown: string, opts: ExportOptions = {}): 
   const footers = footerKids.length ? { default: new Footer({ children: footerKids }) } : undefined;
 
   const font = preset?.font ?? "Calibri";
+  const fm = frontmatterProps(markdown);
   const doc = new Document({
-    creator: "DOCX Export Studio",
-    title: opts.title,
+    creator: fm.author ?? "DOCX Export Studio",
+    title: fm.title ?? opts.title,
     styles: {
       default: {
         document: {
           run: { font, size: Math.round((preset?.sizePt ?? 11) * 2) },
           paragraph: preset ? { spacing: { line: Math.round(preset.lineSpacing * 240) } } : undefined,
         },
-        ...(preset ? headingDefaults(preset) : {}),
+        ...headingDefaults(preset),
       },
+      paragraphStyles: [
+        {
+          id: "CodeBlock",
+          name: "Code Block",
+          basedOn: "Normal",
+          quickFormat: true,
+          run: { font: CODE_FONT, size: 19 },
+          paragraph: { spacing: { after: 0, line: 240 }, shading: { type: ShadingType.CLEAR, fill: "F2F2F2", color: "auto" } },
+        },
+      ],
+      characterStyles: [
+        {
+          id: "InlineCode",
+          name: "Inline Code",
+          quickFormat: true,
+          run: { font: CODE_FONT, shading: { type: ShadingType.CLEAR, fill: "EFEFEF", color: "auto" } },
+        },
+      ],
     },
-    numbering: { config: numberingConfig(builder.orderedRefs) },
+    features: wantToc ? { updateFields: true } : undefined,
+    numbering: { config: numberingConfig(builder.orderedCount > 0) },
     footnotes: Object.keys(footnotes).length ? footnotes : undefined,
     sections: [
       {
@@ -366,7 +476,15 @@ export async function exportToDocx(markdown: string, opts: ExportOptions = {}): 
                 margin: { top: preset.marginIn * 1440, bottom: preset.marginIn * 1440, left: preset.marginIn * 1440, right: preset.marginIn * 1440 },
               },
             }
-          : {},
+          : {
+              page: {
+                size: PAGE[opts.page?.size === "Letter" ? "Letter" : "A4"],
+                margin: (() => {
+                  const m = opts.page?.margins === "narrow" ? 720 : 1440;
+                  return { top: m, bottom: m, left: m, right: m };
+                })(),
+              },
+            },
         headers,
         footers,
         children: children.length ? children : [new Paragraph({})],

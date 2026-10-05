@@ -40,6 +40,18 @@ describe("docx structure", () => {
     expect(xml).toContain("UNIQUE_END_MARKER");
   });
 
+  it("uses built-in Heading styles with outline levels, and sets the document title", async () => {
+    const styles = await zip.file("word/styles.xml")!.async("string");
+    for (let i = 1; i <= 6; i++) {
+      const m = styles.match(new RegExp(`<w:style[^>]*w:styleId="Heading${i}"[^>]*>[\\s\\S]*?</w:style>`));
+      expect(m, `Heading${i} style`).toBeTruthy();
+      expect(m![0]).toContain(`<w:outlineLvl w:val="${i - 1}"/>`);
+    }
+    const core = await zip.file("docProps/core.xml")!.async("string");
+    // the fixture's frontmatter title wins over the file-name fallback ("Fixture")
+    expect(core).toContain("<dc:title>Frontmatter must not appear</dc:title>");
+  });
+
   it("drops frontmatter and comments", () => {
     expect(xml).not.toContain("Frontmatter must not appear");
     expect(xml).not.toContain("hidden comment");
@@ -76,8 +88,20 @@ describe("docx structure", () => {
   });
 
   it("renders code in a monospace font", () => {
-    expect(xml).toContain("Consolas");
+    expect(xml).toContain("CodeBlock"); // Consolas lives in the named style (see next test)
     expect(xml).toContain("function hello(name: string)");
+  });
+
+  it("uses named Code Block / Inline Code styles and preserves code whitespace", async () => {
+    const b = await exportToDocx("Use `x = 1` here.\n\n```py\ndef f():\n    return  1\n```\n", { title: "T" });
+    const z = await JSZip.loadAsync(b);
+    const doc = await z.file("word/document.xml")!.async("string");
+    const styles = await z.file("word/styles.xml")!.async("string");
+    expect(styles).toMatch(/<w:style w:type="paragraph"[^>]*w:styleId="CodeBlock"[\s\S]*?Consolas[\s\S]*?<\/w:style>/);
+    expect(styles).toMatch(/<w:style w:type="character"[^>]*w:styleId="InlineCode"[\s\S]*?Consolas[\s\S]*?<\/w:style>/);
+    expect(doc).toContain('<w:pStyle w:val="CodeBlock"/>');
+    expect(doc).toContain('<w:rStyle w:val="InlineCode"/>');
+    expect(doc).toContain('<w:t xml:space="preserve">    return  1</w:t>');
   });
 
   it("renders callouts with title and a left border", () => {

@@ -8,7 +8,7 @@ Export an Obsidian note to a .docx file (the format Microsoft Word uses) with on
 
 ## Free version
 
-Run **Export current note to .docx** from the command palette, or click the ribbon icon. The `.docx` is saved next to the note, in your vault (an existing file is never overwritten; you get `Note (1).docx`, and so on).
+Run **Export current note to .docx** from the command palette, click the ribbon icon, or (from version 0.1.3) right-click a note (in the file explorer or in the editor) and choose **Export to .docx**. The `.docx` is saved next to the note, in your vault (an existing file is never overwritten; you get `Note (1).docx`, and so on).
 
 Supported Markdown:
 
@@ -18,6 +18,15 @@ Supported Markdown:
 - Tables
 - Code blocks, block quotes, callouts
 - Local images (`![[image.png]]` and `![](image.png)`) embedded from your vault
+
+New in version 0.1.3 (not in the 0.1.2 release):
+
+- Math (`$...$` and `$$...$$`) becomes native, editable Word equations for common LaTeX; LaTeX the converter does not understand stays as monospace source text. Currency such as `$5 and $6` stays text.
+- Note embeds (`![[Other note]]`, `![[Note#Heading]]`, `![[Note#^block]]`) are inlined, up to 3 levels deep; cycles and missing notes become plain text.
+- Optional table of contents (setting "Table of contents", or a `[[toc]]` line in a note). Word should ask to update fields when it opens the file (not tested in Word); LibreOffice does not fill it until updated.
+- Page size (A4 default, or US Letter) and margins (normal or narrow) are free settings.
+- Code blocks and inline code use editable Word styles ("Code Block" and "Inline Code"); tables keep column alignment and a header row and fit the page width.
+- Setext headings (`Title` over `=====`), `[/]` and `[-]` task states, and HTML comments are handled; note properties (frontmatter) are never printed, and the title and author properties go into the file properties.
 
 ## FAQ
 
@@ -40,7 +49,7 @@ No. Using your own .docx as a template is not supported, in the free version or 
 Next to the note, inside your vault. You can't pick another folder. An existing file is never overwritten: you get `Note (1).docx`, `Note (2).docx`, and so on.
 
 ### What about math and embedded notes?
-In the current release (0.1.2), embedded notes, math, Dataview and Mermaid are not specially handled and may not convert (see Known limits).
+In the 0.1.2 release, embedded notes and math are not specially handled. From version 0.1.3, math is converted to Word equations and note embeds are inlined (see "New in version 0.1.3" above). Dataview and Mermaid are not handled and may not convert.
 
 ### Does it send my notes anywhere?
 No. Exporting works fully offline: no network call during export, no telemetry, analytics or ads, and your notes never leave your computer.
@@ -53,7 +62,7 @@ Not yet. It was checked in LibreOffice (headless) and by inspecting the .docx XM
 Pro unlocks these features, built and covered by automated tests (see "Known limits" for what has not been tested):
 
 - **Style presets**: four built-in presets (Default, Academic, Business, Compact) plus your own custom presets (font, body size, heading colour, line spacing, margins, Letter or A4).
-- **Real footnotes (native .docx footnotes)**: `[^1]` references and definitions become real footnotes.
+- **Real footnotes (native .docx footnotes)**: `[^1]` references and definitions become real footnotes (from version 0.1.3 also inline `^[like this]` footnotes).
 - **Header, footer and page numbers**: optional text and PAGE / NUMPAGES fields.
 - **Batch export**: export all notes in a folder (optionally including subfolders) in one go, from the command palette or the folder's context menu. Capped at 200 notes per run.
 
@@ -83,7 +92,7 @@ Keys from refunded or charged-back purchases, or from ended/cancelled subscripti
 
 ## Known limits (honest status)
 
-- **Tested in Obsidian 1.13.7 on Linux desktop on version 0.1.0** (`main.js` sha256 starts `bf84e5b9`). Versions 0.1.1 and 0.1.2 were not re-run in Obsidian. 0.1.1 changed build settings and settings-heading text for the directory review; 0.1.2 only changes the settings link to "How to get Pro" (it now opens the Gumroad page in your browser when you click it; the plugin itself makes no extra network call). Automated tests (44) pass on 0.1.2. See TESTED.md.
+- **Tested in Obsidian 1.13.7 on Linux desktop on version 0.1.0** (`main.js` sha256 starts `bf84e5b9`). Versions 0.1.1 and 0.1.2 were not re-run in Obsidian. **Version 0.1.3 has not been run in Obsidian**: the right-click menu entries, the new settings and the Pro offline re-check are covered by automated tests and a type check only, not by a real Obsidian window. Automated tests (115) pass on the 0.1.3 source. See TESTED.md.
 - **Pro features were exercised with the Pro state forced on in the test setup, not with a licence key.**
 - **Not tested in Microsoft Word.** Output was checked in LibreOffice 6.4.7.2 (headless) and by inspecting the `.docx` XML. The converted PDFs were not viewed by eye.
 - **Batch export with subfolders was not exercised.**
@@ -93,7 +102,14 @@ Keys from refunded or charged-back purchases, or from ended/cancelled subscripti
 - **Not yet confirmed: a real valid key, and a refunded key.** Accepting a valid key and rejecting a refunded one have been tested with simulated responses only.
 - **The licence check has not yet been confirmed by a paid purchase, and the first buyers are that test.** If your key does not verify, reply to your Gumroad receipt and the purchase is refunded in full.
 - Task-list checkboxes use the "Segoe UI Symbol" font; the look in Word is unverified.
-- Microsoft Word may show different spacing than LibreOffice. Some Obsidian-specific syntax (embedded notes, Dataview, Mermaid, math) is not specially handled and may not convert.
+- Microsoft Word may show different spacing than LibreOffice. Some Obsidian-specific syntax (Dataview, Mermaid) is not specially handled and may not convert.
+
+## Known issues (found by the 0.1.3 syntax regression run)
+
+- In the free version, footnotes (`[^1]`) are left as literal text; footnote conversion is a Pro feature.
+- Callout fold markers (`-`/`+`) are ignored: callouts always export expanded.
+- Custom task states (`[/]`, `[-]`) export as an unchecked box.
+- Math that the converter does not understand stays as monospace source text.
 
 ## Support and licence
 

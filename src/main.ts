@@ -1,7 +1,7 @@
 import { App, Notice, Plugin, PluginSettingTab, Setting, TFile, TFolder, normalizePath, requestUrl } from "obsidian";
 import { exportToDocx } from "./exporter";
 import { HOW_TO_GET_PRO_URL } from "./config";
-import { verifyLicense, type HttpPost } from "./license";
+import { applyLicenseResult, verifyLicense, type HttpPost } from "./license";
 import {
   BUILTIN_PRESETS,
   FreeGate,
@@ -24,6 +24,9 @@ interface Settings {
   footer: string;
   pageNumbers: boolean;
   batchSubfolders: boolean;
+  pageSize: "A4" | "Letter";
+  margins: "normal" | "narrow";
+  toc: boolean;
 }
 
 const DEFAULTS: Settings = {
@@ -36,6 +39,9 @@ const DEFAULTS: Settings = {
   footer: "",
   pageNumbers: true,
   batchSubfolders: false,
+  pageSize: "A4",
+  margins: "normal",
+  toc: false,
 };
 
 const MAX_BATCH = 200;
@@ -92,6 +98,15 @@ export default class DocxExportStudio extends Plugin {
       this.app.workspace.on("file-menu", (menu, f) => {
         if (f instanceof TFolder)
           menu.addItem((i) => i.setTitle("Export notes in folder to .docx (Pro)").setIcon("file-down").onClick(() => void this.exportFolder(f)));
+        else if (f instanceof TFile && f.extension === "md")
+          menu.addItem((i) => i.setTitle("Export to .docx").setIcon("file-down").onClick(() => void this.exportNotice(f)));
+      }),
+    );
+    this.registerEvent(
+      this.app.workspace.on("editor-menu", (menu, _editor, view) => {
+        const f = view.file;
+        if (f && f.extension === "md")
+          menu.addItem((i) => i.setTitle("Export to .docx").setIcon("file-down").onClick(() => void this.exportNotice(f)));
       }),
     );
   }
@@ -105,7 +120,8 @@ export default class DocxExportStudio extends Plugin {
       new Notice(`Exported to ${await this.exportFile(file)}`);
     } catch (e) {
       console.error("DOCX Export Studio:", e);
-      new Notice("DOCX export failed. See the developer console for details.");
+      const tooLarge = e instanceof Error && e.message.startsWith("Note is too large");
+      new Notice(tooLarge ? (e as Error).message : "DOCX export failed. See the developer console for details.");
     }
   }
 
@@ -156,6 +172,13 @@ export default class DocxExportStudio extends Plugin {
         footer: s.footer || undefined,
         pageNumbers: s.pageNumbers,
       },
+      page: { size: s.pageSize, margins: s.margins },
+      toc: s.toc,
+      sourcePath: file.path,
+      resolveNote: async (link, from) => {
+        const target = this.app.metadataCache.getFirstLinkpathDest(decodeURIComponent(link), from);
+        return target && target.extension === "md" ? { path: target.path, text: await this.app.vault.cachedRead(target) } : null;
+      },
       resolveImage: async (src) => {
         const link = decodeURIComponent(src.split("#")[0]);
         const target = this.app.metadataCache.getFirstLinkpathDest(link, file.path);
@@ -182,6 +205,26 @@ class ExportSettingTab extends PluginSettingTab {
     const s = this.plugin.settings;
     el.empty();
 
+    new Setting(el).setName("Page setup").setHeading();
+    new Setting(el).setName("Page size").setDesc("Free. A Pro style preset, if chosen, sets its own page size and margins.").addDropdown((d) =>
+      d.addOption("A4", "A4").addOption("Letter", "US Letter").setValue(s.pageSize).onChange(async (v) => {
+        s.pageSize = v === "Letter" ? "Letter" : "A4";
+        await this.plugin.saveSettings();
+      }),
+    );
+    new Setting(el).setName("Table of contents").setDesc("Free. Adds a Word table of contents (headings 1-4) at the top. A [[toc]] line in a note does the same. Word asks to update fields when it opens the file.").addToggle((t) =>
+      t.setValue(s.toc).onChange(async (v) => {
+        s.toc = v;
+        await this.plugin.saveSettings();
+      }),
+    );
+    new Setting(el).setName("Margins").addDropdown((d) =>
+      d.addOption("normal", "Normal (1 inch)").addOption("narrow", "Narrow (0.5 inch)").setValue(s.margins).onChange(async (v) => {
+        s.margins = v === "narrow" ? "narrow" : "normal";
+        await this.plugin.saveSettings();
+      }),
+    );
+
     new Setting(el).setName("Pro upgrade").setHeading();
     el.createEl("p", {
       text:
@@ -200,8 +243,7 @@ class ExportSettingTab extends PluginSettingTab {
         b.setButtonText(s.proActive ? "Re-check" : "Verify").onClick(() => void (async () => {
           b.setDisabled(true);
           const r = await verifyLicense(key, obsidianPost);
-          s.proActive = r.status === "valid";
-          s.licenseKey = r.status === "valid" || r.status === "refunded" ? key.trim() : s.licenseKey;
+          Object.assign(s, applyLicenseResult(s, r, key));
           await this.plugin.saveSettings();
           new Notice(r.message);
           this.display();
