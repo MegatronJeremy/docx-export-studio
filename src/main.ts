@@ -191,7 +191,7 @@ class ExportSettingTab extends PluginSettingTab {
     });
     const status = el.createEl("p", { text: s.proActive ? "Status: Pro active." : "Status: free version." });
     const how = el.createEl("p");
-    how.createEl("a", { text: "How to get Pro", href: HOW_TO_GET_PRO_URL });
+    how.createEl("a", { text: "How to get Pro (one-time purchase on Gumroad, opens in your browser)", href: HOW_TO_GET_PRO_URL });
     let key = s.licenseKey;
     new Setting(el)
       .setName("Licence key")

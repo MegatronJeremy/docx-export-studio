@@ -1,7 +1,7 @@
 {
   "id": "docx-export-studio",
   "name": "DOCX Export Studio",
-  "version": "0.1.1",
+  "version": "0.1.2",
   "minAppVersion": "1.5.0",
   "description": "Export notes to .docx files (the format Microsoft Word uses) without Pandoc. Exporting needs no network.",
   "author": "Quillfern (AI-assisted)",

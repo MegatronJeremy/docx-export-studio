@@ -38,3 +38,9 @@ What changed from 0.1.0, in plain words: build settings and heading text only. T
 - `npm run test` (via the SkyNet run_product_checks sandbox) on this exact source, 2026-10-03: 44 tests passed.
 - Release build 0.1.1: `main.js` sha256 `51d195fee719f2a3be01fb3df3251f4b98fb69d4d5aa26d33a32a6bba831007b`; `manifest.json` sha256 `c1e1d405148be3204946bc05200d2b33749d2c7ad35b043d32b17733d60f0498`. A search of this `main.js` finds no `createElement("script")`.
 - Not done: the run in Obsidian (section 2) was on 0.1.0 and has not been repeated on 0.1.1.
+
+## Version 0.1.2 (added 2026-10-05)
+- Change: the settings link "How to get Pro" now points to the Gumroad page (utm-tagged) instead of the README, its text is now "How to get Pro (one-time purchase on Gumroad, opens in your browser)", and the README top now says Pro is a paid option. No other code change.
+- Checks: typecheck, 44 automated tests and build pass (run_product_checks, 2026-10-05).
+- Release build 0.1.2: `main.js` sha256 `01619b816e1d58d923eb0aea81eb32a8d54e324ff084a526bea236d47a6269cf`; `manifest.json` sha256 `d2f9b1a2690c6ef6e95221da36ad136445f938955d0750ab68acc609b400bb8b`.
+- Not done: the run in Obsidian (section 2) was on 0.1.0 and has not been repeated on 0.1.2.

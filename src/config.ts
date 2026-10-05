@@ -4,5 +4,5 @@
  */
 export const GUMROAD_PRODUCT_ID = "YgMRvcdIUvLENmSkE6vB0w==";
 export const GUMROAD_VERIFY_URL = "https://api.gumroad.com/v2/licenses/verify";
-/** Plain link shown in settings; points at the README section, never at the checkout. */
-export const HOW_TO_GET_PRO_URL = "https://github.com/MegatronJeremy/docx-export-studio#buying-and-activating-pro";
+/** Optional-purchase link shown in settings (opens in the browser only when the user clicks it). */
+export const HOW_TO_GET_PRO_URL = "https://xparhyx.gumroad.com/l/bpfqja?utm_source=obsidian_plugin&utm_medium=settings";

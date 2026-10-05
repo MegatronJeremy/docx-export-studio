@@ -4,7 +4,7 @@ Export an Obsidian note to a .docx file (the format Microsoft Word uses) with on
 
 > **AI-assisted.** This plugin and this README were written with AI assistance (Claude) by Quillfern (AI-assisted), a small AI-assisted studio, and reviewed before release. The code is open source under the MIT licence.
 
-> **Optional payment.** The export is free. An optional paid upgrade, **DOCX Export Studio Pro**, is a separate one-time purchase on Gumroad; see "Buying and activating Pro" below for current availability. The free version is not time-limited and never nags.
+> **Optional payment.** The export is free. An optional paid upgrade, **DOCX Export Studio Pro**, is a separate one-time purchase on Gumroad; [buy it on Gumroad](https://xparhyx.gumroad.com/l/bpfqja?utm_source=readme&utm_medium=top) or see "Buying and activating Pro" below. Pro adds style presets, real footnotes, header/footer and batch export; the free export above keeps working without it. The free version is not time-limited and never nags. Pro is sold by the same AI-assisted studio that wrote this plugin, so we earn money if you buy it.
 
 ## Free version
 
@@ -32,7 +32,7 @@ Not included: using your own `.docx` file as a template. Pro offers style preset
 
 ### Buying and activating Pro
 
-1. Buy DOCX Export Studio Pro on Gumroad. Buy it here: https://xparhyx.gumroad.com/l/bpfqja ($12, one-time).
+1. Buy DOCX Export Studio Pro on Gumroad. Buy it here: https://xparhyx.gumroad.com/l/bpfqja?utm_source=readme&utm_medium=howto ($12, one-time).
 2. Gumroad emails you a licence key.
 3. In Obsidian: Settings → Community plugins → DOCX Export Studio → paste the key → **Verify**.
 
@@ -41,7 +41,7 @@ Keys from refunded or charged-back purchases, or from ended/cancelled subscripti
 ## Network use, privacy and data
 
 - **One network call, only when you press Verify / Re-check**: the plugin sends your licence key and the Pro product id to `https://api.gumroad.com/v2/licenses/verify` (Gumroad's licence API). Nothing else is sent. It does not increase the licence's use count.
-- The settings tab has one 'How to get Pro' link to this README. It opens in your browser only when clicked; the plugin loads nothing for it.
+- The settings tab has one 'How to get Pro' link to the Pro page on Gumroad (the link carries utm tags that tell Gumroad the click came from the plugin). It opens in your browser only when clicked; the plugin loads nothing for it.
 - **No network call at startup, in the background, or during export.** Exporting works fully offline.
 - **No telemetry, analytics, ads or tracking.** No server of ours is involved.
 - Your licence key and settings are stored locally in the plugin's `data.json` inside your vault. Your notes never leave your computer.
@@ -54,7 +54,7 @@ Keys from refunded or charged-back purchases, or from ended/cancelled subscripti
 
 ## Known limits (honest status)
 
-- **Tested in Obsidian 1.13.7 on Linux desktop on version 0.1.0** (`main.js` sha256 starts `bf84e5b9`). Version 0.1.1 only changes build settings and settings-heading text for the Obsidian directory review; its 44 automated tests pass, but the run in Obsidian was not repeated on 0.1.1. See TESTED.md.
+- **Tested in Obsidian 1.13.7 on Linux desktop on version 0.1.0** (`main.js` sha256 starts `bf84e5b9`). Versions 0.1.1 and 0.1.2 were not re-run in Obsidian. 0.1.1 changed build settings and settings-heading text for the directory review; 0.1.2 only changes the settings link to "How to get Pro" (it now opens the Gumroad page in your browser when you click it; the plugin itself makes no extra network call). Automated tests (44) pass on 0.1.2. See TESTED.md.
 - **Pro features were exercised with the Pro state forced on in the test setup, not with a licence key.**
 - **Not tested in Microsoft Word.** Output was checked in LibreOffice 6.4.7.2 (headless) and by inspecting the `.docx` XML. The converted PDFs were not viewed by eye.
 - **Batch export with subfolders was not exercised.**
