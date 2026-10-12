@@ -4,7 +4,7 @@ Export an Obsidian note to a .docx file (the format Microsoft Word uses) with on
 
 > **AI-assisted.** This plugin and this README were written with AI assistance (Claude) by Quillfern (AI-assisted), a small AI-assisted studio, and reviewed before release. The code is open source under the MIT licence.
 
-> **Optional payment.** The export is free. An optional paid upgrade, **DOCX Export Studio Pro**, is a separate one-time purchase on Gumroad; [buy it on Gumroad](https://xparhyx.gumroad.com/l/bpfqja?utm_source=readme&utm_medium=top) or see "Buying and activating Pro" below. Pro adds style presets, real footnotes, header/footer and batch export; the free export above keeps working without it. The free version is not time-limited and never nags. Pro is sold by the same AI-assisted studio that wrote this plugin, so we earn money if you buy it.
+> **Optional payment.** The export is free. An optional paid upgrade, **DOCX Export Studio Pro**, is a separate one-time purchase on Gumroad; [buy it on Gumroad](https://xparhyx.gumroad.com/l/bpfqja?utm_source=readme&utm_medium=top) or see "Buying and activating Pro" below. Pro adds style presets, real footnotes, header/footer and batch export; the free export above keeps working without it. The free version is not time-limited and never nags: it mentions Pro only in the settings tab and in a short notice when you use a Pro feature (footnotes, at most once per session, or batch export). Pro is sold by the same AI-assisted studio that wrote this plugin, so we earn money if you buy it.
 
 ## Free version
 
@@ -80,6 +80,7 @@ Keys from refunded or charged-back purchases, or from ended/cancelled subscripti
 
 - **One network call, only when you press Verify / Re-check**: the plugin sends your licence key and the Pro product id to `https://api.gumroad.com/v2/licenses/verify` (Gumroad's licence API). Nothing else is sent. It does not increase the licence's use count.
 - The settings tab has one 'How to get Pro' link to the Pro page on Gumroad (the link carries utm tags that tell Gumroad the click came from the plugin). It opens in your browser only when clicked; the plugin loads nothing for it.
+- From version 0.1.4 two in-app notices also carry a link to the "Buying and activating Pro" section of this README on GitHub: when you export a note that has footnotes without Pro (shown once per session), and when you choose batch export without Pro. Like the settings link, it opens in your browser only when clicked; the plugin loads nothing for it.
 - **No network call at startup, in the background, or during export.** Exporting works fully offline.
 - **No telemetry, analytics, ads or tracking.** No server of ours is involved.
 - Your licence key and settings are stored locally in the plugin's `data.json` inside your vault. Your notes never leave your computer.
@@ -92,7 +93,7 @@ Keys from refunded or charged-back purchases, or from ended/cancelled subscripti
 
 ## Known limits (honest status)
 
-- **Tested in Obsidian 1.13.7 on Linux desktop on version 0.1.0** (`main.js` sha256 starts `bf84e5b9`). Versions 0.1.1 and 0.1.2 were not re-run in Obsidian. **Version 0.1.3 has not been run in Obsidian**: the right-click menu entries, the new settings and the Pro offline re-check are covered by automated tests and a type check only, not by a real Obsidian window. Automated tests (115) pass on the 0.1.3 source. See TESTED.md.
+- **Tested in Obsidian 1.13.7 on Linux desktop on version 0.1.0** (`main.js` sha256 starts `bf84e5b9`). Versions 0.1.1 and 0.1.2 were not re-run in Obsidian. **Versions 0.1.3 and 0.1.4 have not been run in Obsidian**: the right-click menu entries, the new settings and the Pro offline re-check are covered by automated tests and a type check only, not by a real Obsidian window. Automated tests (117) pass on the 0.1.4 source. See TESTED.md.
 - **Pro features were exercised with the Pro state forced on in the test setup, not with a licence key.**
 - **Not tested in Microsoft Word.** Output was checked in LibreOffice 6.4.7.2 (headless) and by inspecting the `.docx` XML. The converted PDFs were not viewed by eye.
 - **Batch export with subfolders was not exercised.**
@@ -106,7 +107,7 @@ Keys from refunded or charged-back purchases, or from ended/cancelled subscripti
 
 ## Known issues (found by the 0.1.3 syntax regression run)
 
-- In the free version, footnotes (`[^1]`) are left as literal text; footnote conversion is a Pro feature.
+- In the free version, footnotes (`[^1]`) are left as literal text; footnote conversion is a Pro feature. From 0.1.4 the plugin tells you so once per session when you export such a note.
 - Callout fold markers (`-`/`+`) are ignored: callouts always export expanded.
 - Custom task states (`[/]`, `[-]`) export as an unchecked box.
 - Math that the converter does not understand stays as monospace source text.

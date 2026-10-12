@@ -84,3 +84,9 @@ export function sanitizePreset(p: Partial<StylePreset> & { id: string; name: str
     page: p.page === "A4" ? "A4" : "Letter",
   };
 }
+
+/** True when the note has a `[^id]` footnote reference or an inline `^[...]` footnote (free export leaves these as text). */
+export function hasFootnoteRefs(markdown: string): boolean {
+  const noCode = markdown.replace(/```[\s\S]*?```/g, "").replace(/`[^`\n]*`/g, "");
+  return /\[\^[^\]\s]+\](?!:)/.test(noCode) || /\^\[[^\]\n]+\]/.test(noCode);
+}

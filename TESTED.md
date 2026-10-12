@@ -64,3 +64,17 @@ Checks on this exact source, run with the SkyNet run_product_checks sandbox on 2
 Release build 0.1.3: `main.js` sha256 `8dd578c94ffa77a7f4b4225ccbbf04d105df8a820273789bd623bd29f8ebc200`; `manifest.json` sha256 `689925dd178e6a2a7880d5c92a6269f43a65367c77d1f8ca49fa60fd731966b7`. A search of this `main.js` finds no `createElement("script")`.
 
 Not done: version 0.1.3 was not run in Obsidian (section 2 was on 0.1.0 only). In particular the new right-click menu entries, the page and table-of-contents settings and the offline Re-check have only automated-test and type-check evidence. Not tested in Word.
+
+## Version 0.1.4 (added 2026-10-12)
+
+What changed from 0.1.3, in plain words: a free user is now told, at the moment they hit a Pro feature, that it is a Pro feature, with a link to the README section "Buying and activating Pro". Before, footnotes were silently left as text and the batch notice had no link. Nothing else in the export changed; no new network call (the link opens in the browser only when clicked).
+
+- Export of a note with `[^id]` or inline `^[...]` footnotes without Pro: after the normal "Exported to ..." notice, one extra notice per session explains that footnotes stay plain text in the free export and links the README section.
+- Batch export chosen without Pro: the notice now says Pro is needed, says where to enter an existing key, and links the README section.
+- New helper `hasFootnoteRefs` (src/pro.ts), 2 new tests in test/pro.test.ts.
+
+Checks on this exact source, SkyNet run_product_checks sandbox, 2026-10-12: `npm run typecheck`, `npm run test` (15 test files, 117 tests passed) and `npm run build` passed. There is no lint script in package.json. The notices themselves (DOM fragment with a link in an Obsidian Notice) were not run in Obsidian.
+
+Release build 0.1.4: `main.js` sha256 `f0f8bd3406b4f213f1480f2bc029d35c92447339cfd0b7fa94fc9d01f6a0a94a`; `manifest.json` sha256 `b8e8771f6ae5799b76df7d2551985949dbcbce271289073b4a08e13c276c8541`. A search of this `main.js` finds no `createElement("script")`.
+
+Not done: version 0.1.4 was not run in Obsidian. Not tested in Word.

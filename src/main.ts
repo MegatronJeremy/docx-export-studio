@@ -1,6 +1,6 @@
 import { App, Notice, Plugin, PluginSettingTab, Setting, TFile, TFolder, normalizePath, requestUrl } from "obsidian";
 import { exportToDocx } from "./exporter";
-import { HOW_TO_GET_PRO_URL } from "./config";
+import { HOW_TO_GET_PRO_URL, PRO_INFO_URL } from "./config";
 import { applyLicenseResult, verifyLicense, type HttpPost } from "./license";
 import {
   BUILTIN_PRESETS,
@@ -8,6 +8,7 @@ import {
   PRO_FEATURE_LABELS,
   UnlockedGate,
   findPreset,
+  hasFootnoteRefs,
   sanitizePreset,
   type ProGate,
   type StylePreset,
@@ -118,6 +119,10 @@ export default class DocxExportStudio extends Plugin {
   private async exportNotice(file: TFile) {
     try {
       new Notice(`Exported to ${await this.exportFile(file)}`);
+      if (!this.gate.has("footnotes") && !this.footnoteHintShown && hasFootnoteRefs(await this.app.vault.cachedRead(file))) {
+        this.footnoteHintShown = true;
+        this.proNotice("This note has footnotes. The free export leaves them as plain text; Pro turns them into real Word footnotes.");
+      }
     } catch (e) {
       console.error("DOCX Export Studio:", e);
       const tooLarge = e instanceof Error && e.message.startsWith("Note is too large");
@@ -125,9 +130,22 @@ export default class DocxExportStudio extends Plugin {
     }
   }
 
+  /** Shown once per session for footnotes (never on a timer), and each time batch export is chosen without Pro. */
+  private footnoteHintShown = false;
+
+  private proNotice(text: string) {
+    const frag = document.createDocumentFragment();
+    frag.appendChild(document.createTextNode(text + " "));
+    const a = document.createElement("a");
+    a.textContent = "About Pro and how to activate it";
+    a.href = PRO_INFO_URL;
+    frag.appendChild(a);
+    new Notice(frag, 12000);
+  }
+
   private async exportFolder(folder: TFolder) {
     if (!this.gate.has("batch")) {
-      new Notice("Batch export is a Pro feature. Enter your licence key in the plugin settings.");
+      this.proNotice("Batch export is a Pro feature. Already have a key? Enter it under Settings, Community plugins, DOCX Export Studio.");
       return;
     }
     const files: TFile[] = [];

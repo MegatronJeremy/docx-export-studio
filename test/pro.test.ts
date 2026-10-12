@@ -2,7 +2,7 @@ import JSZip from "jszip";
 import { describe, expect, it } from "vitest";
 import { exportToDocx } from "../src/exporter";
 import { extractFootnotes, parseInline } from "../src/parser";
-import { BUILTIN_PRESETS, PRO_FEATURE_LABELS, FreeGate, UnlockedGate, findPreset, sanitizePreset } from "../src/pro";
+import { BUILTIN_PRESETS, PRO_FEATURE_LABELS, FreeGate, UnlockedGate, findPreset, sanitizePreset, hasFootnoteRefs } from "../src/pro";
 
 const md = "# Title\n\nClaim one.[^a] Second.[^b] Unknown[^zz].\n\n- [x] done\n- [ ] todo\n\n[^a]: First note\n    continues here.\n[^b]: Second *note*.\n\n```\n[^c]: not a def\n```\n";
 const parts = async (opts: Parameters<typeof exportToDocx>[1]) => {
@@ -122,5 +122,17 @@ describe("Pro labels", () => {
     expect(PRO_FEATURE_LABELS.templates).toBe("Style presets (built-in and your own)");
     expect(PRO_FEATURE_LABELS.footnotes).toBe("Real footnotes (native .docx footnotes)");
     expect(Object.values(PRO_FEATURE_LABELS).join(" ")).not.toMatch(/word|template/i);
+  });
+});
+
+describe("hasFootnoteRefs (free-tier Pro hint)", () => {
+  it("detects reference and inline footnotes", () => {
+    expect(hasFootnoteRefs("Claim.[^1]\n\n[^1]: text")).toBe(true);
+    expect(hasFootnoteRefs("Claim.^[inline note]")).toBe(true);
+  });
+  it("ignores definitions only, plain text and code", () => {
+    expect(hasFootnoteRefs("[^1]: orphan definition")).toBe(false);
+    expect(hasFootnoteRefs("no notes [here](x)")).toBe(false);
+    expect(hasFootnoteRefs("```\na[^1]\n```\n`b[^2]`")).toBe(false);
   });
 });
