@@ -2,6 +2,8 @@
 
 Export an Obsidian note to a .docx file (the format Microsoft Word uses) with one command. No Pandoc, no command line, no account needed for the free version.
 
+![Silent 9-second demo: an Obsidian note exported to .docx (right pane is a LibreOffice render of the real file)](docs/demo.gif)
+
 > **AI-assisted.** This plugin and this README were written with AI assistance (Claude) by Quillfern (AI-assisted), a small AI-assisted studio, and reviewed before release. The code is open source under the MIT licence.
 
 > **Optional payment.** The export is free. An optional paid upgrade, **DOCX Export Studio Pro**, is a separate one-time purchase on Gumroad; [buy it on Gumroad](https://xparhyx.gumroad.com/l/bpfqja?utm_source=readme&utm_medium=top) or see "Buying and activating Pro" below. Pro adds style presets, real footnotes, header/footer and batch export; the free export above keeps working without it. The free version is not time-limited and never nags: it mentions Pro only in the settings tab and in a short notice when you use a Pro feature (footnotes, at most once per session, or batch export). Pro is sold by the same AI-assisted studio that wrote this plugin, so we earn money if you buy it.
