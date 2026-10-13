@@ -1,5 +1,9 @@
 import type { Block, Inline, InlineStyle, ListItem } from "./ast";
 
+// Link/image destination: <angle form with spaces> or a plain run that may hold one level of balanced parentheses, e.g. "image (1).png".
+const DEST = "(?:<([^>]+)>|((?:[^()\\s<>]|\\([^()\\s]*\\))+))";
+const TITLE = '(?:\\s+"[^"]*")?\\)';
+
 /** Small, dependency-free parser for the Obsidian flavour of Markdown we export. */
 
 export function parseMarkdown(source: string): Block[] {
@@ -247,18 +251,18 @@ export function parseInline(src: string, style: InlineStyle = {}): Inline[] {
     if ((m = rest.match(/^!\[\[([^\]|]+)(?:\|([^\]]*))?\]\]/))) {
       flush();
       out.push({ t: "image", src: m[1].trim(), alt: m[1].trim(), width: widthOf(m[2]) });
-    } else if ((m = rest.match(/^!\[([^\]]*)\]\(<?([^)\s>]+)>?(?:\s+"[^"]*")?\)/))) {
+    } else if ((m = rest.match(new RegExp("^!\\[([^\\]]*)\\]\\(" + DEST + TITLE)))) {
       flush();
       const [alt, w] = m[1].split("|");
-      out.push({ t: "image", src: m[2], alt: alt.trim(), width: widthOf(w) });
+      out.push({ t: "image", src: m[2] ?? m[3], alt: alt.trim(), width: widthOf(w) });
     } else if ((m = rest.match(/^\[\^([^\]\s]+)\](?!:)/))) {
       flush();
       out.push({ t: "fnref", id: m[1] });
     } else if ((m = rest.match(/^\[\[([^\]|]+)(?:\|([^\]]*))?\]\]/))) {
       buf += m[2] !== undefined ? m[2] : m[1].replace(/#\^?/g, " > ").replace(/ > $/, "").trim();
-    } else if ((m = rest.match(/^\[([^\]]+)\]\(<?([^)\s>]+)>?(?:\s+"[^"]*")?\)/))) {
+    } else if ((m = rest.match(new RegExp("^\\[([^\\]]+)\\]\\(" + DEST + TITLE)))) {
       flush();
-      out.push({ t: "link", href: m[2], children: parseInline(m[1], style) });
+      out.push({ t: "link", href: m[2] ?? m[3], children: parseInline(m[1], style) });
     } else if ((m = rest.match(/^https?:\/\/[^\s<>]+/)) && /\s/.test(prev)) {
       const url = m[0].replace(/[.,;:!?)]+$/, "");
       flush();

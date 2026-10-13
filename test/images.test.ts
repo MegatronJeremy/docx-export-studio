@@ -54,4 +54,16 @@ describe("image cases", () => {
     expect(drawings(r.xml)).toBe(1);
     expect(r.text).toContain("image not found");
   });
+  it("markdown image paths with parentheses, percent-encoding and angle brackets resolve", async () => {
+    const seen: string[] = [];
+    const bytes = await exportToDocx(
+      "![a](image%20(1).png)\n\n![b](<my folder/pic (2).png>)\n\n![c](a/b(v2)/pic.png \"title\")\n\n[l](page(x).md) after",
+      { title: "T", sourcePath: "Main.md", resolveImage: async (s) => (seen.push(s), PNG) },
+    );
+    const xml = await (await JSZip.loadAsync(bytes)).file("word/document.xml")!.async("string");
+    expect(seen).toEqual(["image%20(1).png", "my folder/pic (2).png", "a/b(v2)/pic.png"]);
+    expect(drawings(xml)).toBe(3);
+    expect(xml).not.toContain("](");
+    expect(xml).toContain(" after");
+  });
 });

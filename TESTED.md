@@ -78,3 +78,33 @@ Checks on this exact source, SkyNet run_product_checks sandbox, 2026-10-12: `npm
 Release build 0.1.4: `main.js` sha256 `f0f8bd3406b4f213f1480f2bc029d35c92447339cfd0b7fa94fc9d01f6a0a94a`; `manifest.json` sha256 `b8e8771f6ae5799b76df7d2551985949dbcbce271289073b4a08e13c276c8541`. A search of this `main.js` finds no `createElement("script")`.
 
 Not done: version 0.1.4 was not run in Obsidian. Not tested in Word.
+
+## Version 0.1.5 (added 2026-10-13)
+
+What changed from 0.1.4: the Markdown parser now accepts parentheses in image and link destinations (`![](image%20(1).png)`, `![](a/b(v2)/pic.png)`) and the `<angle bracket>` form with spaces (`![](<my folder/pic (2).png>)`). Before, those images were left as literal text or cut at the first `)`; found by the image test below on 0.1.4. One new test in test/images.test.ts. No new network call and nothing else changed.
+
+Checks on this exact source, SkyNet run_product_checks sandbox, 2026-10-13: `npm ci`, `npm run test` (15 test files, 118 tests passed) and `npm run build` passed. Typecheck runs inside `npm run build` (`tsc --noEmit`).
+
+Release build 0.1.5: `main.js` sha256 `9ef6884d17d095029fa4f8a54f0f33740819d4478984f3ffd4259c7f1f7476be`; `manifest.json` sha256 `a3549789bc8b0aa9d109fb410390b1f629cdbda8c3a8439f71e1908d5663d782`.
+
+### Image test results (real Obsidian, 2026-10-13)
+
+Setup: Obsidian 1.14.4 (Linux AppImage, Electron under Xvfb, in a throwaway cloud sandbox), a fresh vault with only this plugin enabled, free version (no Pro). Each note was opened and exported with the command "Export current note to .docx" (run through the app's command API, not by clicking the palette). Every image was a distinct small PNG. We then unzipped each .docx, read the image order from `word/document.xml` and compared the SHA-256 of each embedded image with the source file in the vault. Harness and notes: `qa/img-e2e/` in the SkyNet workspace (mkvault.mjs, drive2.mjs, verify.py).
+
+Result with the 0.1.5 build (`main.js` sha256 `9ef6884d17d095029fa4f8a54f0f33740819d4478984f3ffd4259c7f1f7476be`): all 10 notes exported, and every image embedded was the expected file (no placeholder text):
+
+| Case | Notes link | Result |
+|---|---|---|
+| Attachments folder 4 levels deep (`Projects/Alpha/assets/attachments/`) | `![[deep.png]]` and full path | 2 of 2 images, correct file |
+| Sibling folder | `![[Sibling/pics/sib.png]]` and `![[sib.png]]` | 2 of 2, correct file |
+| Spaces and non-ASCII (`Мои файлы/Résumé figure ü.png`) | wikilink, `![](../Мои%20файлы/...)`, `![](<../Мои файлы/...>)` | 3 of 3, correct file |
+| Relative Markdown links | `../Other/rel.png`, `local/loc.png`, `./local/loc.png` | 3 of 3, correct file |
+| Relative links from a note one folder deeper | `../../Other/rel.png`, `../local/loc.png` | 2 of 2, correct file |
+| Same file name in two folders | `![[Alpha/dup.png]]`, `![[Beta/dup.png]]` | each resolved to its own file |
+| Same file name, name only, from a note in Beta and in Alpha | `![[dup.png]]` | resolved to the file in the note's own folder, both times |
+| File name with parentheses (`Pasted/image (1).png`) | wikilink, `%20`-encoded Markdown, `<...>` Markdown | 3 of 3, correct file |
+| Width / alias suffix | `![[deep.png|120]]`, `![[sib.png|alt text]]` | 2 of 2, correct file |
+
+A first run of a similar note set against the 0.1.4 build (`main.js` sha256 `f0f8bd34...`, same Obsidian 1.14.4) found the bug fixed in 0.1.5: the `<angle bracket>` Markdown link was left out of the .docx, and a percent-encoded Markdown image whose file name contains parentheses became the placeholder text "[image not found: ...]". The 0.1.4 build embedded the deep-folder, sibling-folder, non-ASCII, relative and same-name cases correctly in that run; the exact parentheses note above was only run on 0.1.5.
+
+Not covered: image sizes in Word (only that the right bytes are embedded), Windows and macOS, Obsidian versions other than 1.14.4, vaults on network drives, file names containing `#`, `^`, `[` or `]` (Obsidian does not allow them in links), SVG and GIF in nested folders, and Word (LibreOffice and Word were not opened for these files). The "same name, name only" behaviour is Obsidian's own link resolution (we call its resolver), so it can differ if Obsidian changes it.

@@ -2,6 +2,15 @@
 
 Export an Obsidian note to a .docx file (the format Microsoft Word uses) with one command. No Pandoc, no command line, no account needed for the free version.
 
+**Images in nested folders and attachment subfolders just work: no Pandoc, no path setup.** The plugin finds each image the way Obsidian itself does, so `![[name.png]]`, `![](../folder/pic.png)`, folders with spaces or non-ASCII names, and files like `image (1).png` are embedded in the .docx without you configuring any attachment path. In our test in a real Obsidian window (version 0.1.5, Obsidian 1.14.4 on Linux), every one of the cases below came out with the right image in the .docx (checked by comparing the image bytes inside the .docx with the source files); see "Image test results" in [TESTED.md](TESTED.md) for the full list and what was not covered:
+
+- an attachments folder four levels deep, linked by shortest name or by full path
+- an image in a sibling folder, linked by full path or by name only
+- folder and file names with spaces and non-ASCII characters (`Мои файлы/Résumé figure ü.png`), as wikilink, percent-encoded Markdown link, and `<angle-bracket>` Markdown link
+- relative Markdown links (`../Other/rel.png`, `local/loc.png`, `./local/loc.png`), from a note and from a note one folder deeper
+- two images with the same file name in different folders (each resolves to the right one by full path; by name only it resolves to the one in the note's own folder)
+- file names containing parentheses (`image (1).png`), fixed in 0.1.5: earlier versions dropped such Markdown-link images
+
 ![Silent 9-second demo: an Obsidian note exported to .docx (right pane is a LibreOffice render of the real file)](docs/demo.gif)
 
 > **AI-assisted.** This plugin and this README were written with AI assistance (Claude) by Quillfern (AI-assisted), a small AI-assisted studio, and reviewed before release. The code is open source under the MIT licence.
@@ -39,7 +48,7 @@ Run **Export current note to .docx** from the command palette (or click the ribb
 No. The plugin builds the .docx itself: no Pandoc, no command line, no PATH setup, and no extra download.
 
 ### Are images embedded in the .docx?
-Yes for local images in your vault, both `![[image.png]]` and `![](image.png)`. Images are looked up through Obsidian's own link resolution rather than a file path passed to an external tool. Limit: we have not tested every vault layout (for example deeply nested attachment folders), so please open an issue if one fails. Web images are not embedded.
+Yes for local images in your vault, both `![[image.png]]` and `![](image.png)`, including images in nested folders and attachment subfolders (see the list at the top and TESTED.md). Images are looked up through Obsidian's own link resolution rather than a file path passed to an external tool. Limit: we have not tested every vault layout (for example vaults synced from a network drive, or images in files that Obsidian does not list), so please open an issue if one fails. Web images are not embedded.
 
 ### Does it work on mobile?
 No. It is desktop-only. It has also only been tested on Linux desktop so far (see Known limits).
@@ -95,7 +104,7 @@ Keys from refunded or charged-back purchases, or from ended/cancelled subscripti
 
 ## Known limits (honest status)
 
-- **Tested in Obsidian 1.13.7 on Linux desktop on version 0.1.0** (`main.js` sha256 starts `bf84e5b9`). Versions 0.1.1 and 0.1.2 were not re-run in Obsidian. **Versions 0.1.3 and 0.1.4 have not been run in Obsidian**: the right-click menu entries, the new settings and the Pro offline re-check are covered by automated tests and a type check only, not by a real Obsidian window. Automated tests (117) pass on the 0.1.4 source. See TESTED.md.
+- **Tested in Obsidian 1.13.7 on Linux desktop on version 0.1.0** (`main.js` sha256 starts `bf84e5b9`). Versions 0.1.1 to 0.1.4 were not otherwise run in Obsidian. **Version 0.1.5 was run in Obsidian 1.14.4 on Linux for the image-embedding cases only** (command-palette export of 10 notes, images checked inside the .docx; see TESTED.md): the right-click menu entries, the new settings and the Pro offline re-check are covered by automated tests and a type check only, not by a real Obsidian window. Automated tests (118) pass on the 0.1.5 source. See TESTED.md.
 - **Pro features were exercised with the Pro state forced on in the test setup, not with a licence key.**
 - **Not tested in Microsoft Word.** Output was checked in LibreOffice 6.4.7.2 (headless) and by inspecting the `.docx` XML. The converted PDFs were not viewed by eye.
 - **Batch export with subfolders was not exercised.**
